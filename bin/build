@@ -2,11 +2,16 @@
 set -euo pipefail
 
 IMAGE="ghcr.io/somospollo/caddy"
-VERSION=$(grep -oP 'FROM caddy:\K[^-]+' "$(dirname "$0")/../Dockerfile" | head -1)
+VERSION=$(sed -n 's/^FROM caddy:\([^-]*\)-builder.*/\1/p' "$(dirname "$0")/../Dockerfile")
+
+BUILDER="caddy-multiarch"
+if ! docker buildx inspect "$BUILDER" &>/dev/null; then
+  docker buildx create --name "$BUILDER" --driver docker-container
+fi
 
 echo "Building ${IMAGE}:${VERSION} for linux/amd64,linux/arm64..."
 
-docker buildx build \
+docker buildx build --builder "$BUILDER" \
   --platform linux/amd64,linux/arm64 \
   --provenance=false \
   --tag "${IMAGE}:${VERSION}" \
